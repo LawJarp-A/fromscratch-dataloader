@@ -1,25 +1,27 @@
 ## fromscratch-dataloader
 
-Minimal, readable reimplementation of PyTorch’s DataLoader.
+A tiny, readable reimplementation of PyTorch’s DataLoader.
 
-Inspired by projects like `nanoGPT`, this repo strips down PyTorch’s [DataLoader](https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader) to its essence.
+Inspired by projects like `nanoGPT`, this repo trims PyTorch’s [DataLoader](https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader) down to the essentials.
 
 ---
 
-## Why
+## Why should you care?
 
-PyTorch’s DataLoader is powerful but complex (~1600 lines). At its core, it does:
+PyTorch’s DataLoader is fantastic and production‑ready, but it’s also a bit of a labyrinth (~1600 lines). Underneath the features, the core loop is simple:
 
-- batching indices
-- fetching samples
-- collating into tensors
-- parallelizing and prefetching
+- batch some indices
+- fetch samples from the dataset
+- collate them into tensors
+- (optionally) do this in parallel with prefetching
 
-This repo keeps a simple, readable implementation so you can learn, teach, and extend it.
+This repo keeps that core in a compact form
 
 ---
 
 ## Walkthrough
+
+Let’s build the loader up step by step.
 
 ### 1. Sequential loop
 
@@ -96,7 +98,7 @@ MiniDataLoader (MNIST): 1.87 sec (~100 batches)
 
 ---
 
-## Why MiniDataLoader can look faster in benchmarks
+## Why MiniDataLoader can look faster in benchmarks (sometimes)
 
 - Less overhead: no support for advanced features like `IterableDataset`, timeouts, error propagation, signal cleanup
 - Simpler queues: one in/out queue and minimal bookkeeping
@@ -104,6 +106,25 @@ MiniDataLoader (MNIST): 1.87 sec (~100 batches)
 - Prefetch factor: throttles like PyTorch, with fewer checks
 
 On real GPU training, PyTorch’s production DataLoader typically matches or surpasses this once all features are enabled.
+
+---
+
+## If you want to read the PyTorch code next (path of least pain)
+
+Start here:
+
+- `torch/utils/data/dataloader.py` → defines `DataLoader`, `_BaseDataLoaderIter`, `_SingleProcessDataLoaderIter`, `_MultiProcessingDataLoaderIter`.
+
+Then go deeper:
+
+- `torch/utils/data/_utils/worker.py` → worker loop logic (`_worker_loop`).
+- `torch/utils/data/_utils/fetch.py` → how dataset types are handled (`_DatasetKind`).
+- `torch/utils/data/_utils/collate.py` → `default_collate` (how batches are merged).
+- `torch/utils/data/_utils/pin_memory.py` → async pinning of batches.
+
+So the flow of code is:
+
+- `DataLoader.__iter__` → pick iterator → get indices from `Sampler` → send to workers → worker fetch → collate → back to main process → yield batch.
 
 ---
 
@@ -146,6 +167,6 @@ The magic of `num_workers > 0` is that the main process stops fetching data itse
 
 ---
 
-## Contributing
+## Contributing (bring snacks)
 
 This is an educational repo. PRs for docs, examples, and Rust experiments are welcome.
