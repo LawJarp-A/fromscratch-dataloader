@@ -2,10 +2,19 @@
 import multiprocessing as mp
 from queue import Empty
 import torch
+from collections.abc import Mapping, Sequence
 
 def default_collate(batch):
-    # Simplified: assumes all are tensors of the same shape
-    return torch.stack(batch, dim=0)
+    # Handles tensors, tuples/lists, and dicts recursively.
+    first = batch[0]
+    if isinstance(first, torch.Tensor):
+        return torch.stack(batch, dim=0)
+    if isinstance(first, Mapping):
+        return {k: default_collate([d[k] for d in batch]) for k in first}
+    if isinstance(first, Sequence) and not isinstance(first, (str, bytes)):
+        transposed = list(zip(*batch))
+        return [default_collate(list(items)) for items in transposed]
+    return batch
 
 def _worker_loop(dataset, in_q, out_q, collate_fn):
     for task in iter(in_q.get, None):  # until None is sent
